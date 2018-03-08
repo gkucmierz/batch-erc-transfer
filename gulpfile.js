@@ -3,11 +3,12 @@
 const config = {
   tokenAddr: '0xca97effc66445e59bf8be50207c3f5c7055e651b',
   network: 'kovan', // mainnet
-  sourceAddr: '0x8746177Ff2575E826f6f73A1f90351e0FD0A6649',
-  sourcePriv: '',
-  gasPrice: 1e9,
+  sourceAddr: '0x31c21FB18F24D7933b151FDBfE3A8C4b86f285c3',
+  sourcePriv: '640e984188bed18abf4f41d6536c99a8068a16ab35f329b171a793fb8560b52a',
+  gasPrice: 20e9,
   gasLimit: 1e5,
-  amount: 1e18 // 1 token
+  amount: 0, // 1 token
+  pushTimeout: 1e3
 };
 
 // // mainnet config:
@@ -18,7 +19,8 @@ const config = {
 //   sourcePriv: '',
 //   gasPrice: 1e9,
 //   gasLimit: 1e5,
-//   amount: 1e20 // 100 tokens
+//   amount: 1e20, // 100 tokens
+//   pushTimeout: 1e3
 // };
 
 const gulp = require('gulp');
@@ -93,28 +95,25 @@ gulp.task('push-txs', cb => {
 
   let rawTxs = require('./output/transfer-txs.json');
 
-  rawTxs.map(rawTx => {
+  (function loop(rawTxs) {
+    let rawTx = rawTxs.shift();
+    
+    if (rawTx) {
+      console.log('Pushing tx: ', rawTx);
+      web3.eth.sendSignedTransaction(rawTx, (err, res) => {
+        if (err) {
+          console.error(err);
+          rawTxs.unshift(rawTx);
+        }
 
-    (function loop(rawTxs) {
-      let tx = rawTxs.shift();
-      
-      if (tx) {
-        console.log('Pushing tx: ', rawTx);
-        web3.eth.sendSignedTransaction(tx, (err, res) => {
-          if (err) {
-            console.error(err);
-            rawTxs.unshift(tx);
-          }
+        setTimeout(() => loop(rawTxs), config.pushTimeout);
+      });
+    } else {
+      console.log('Finished pushing all txs');
+      process.nextTick(cb);
+    }
 
-          loop(rawTxs);
-        });
-      } else {
-        console.log('Finished pushing all txs');
-        process.nextTick(cb);
-      }
-
-    }(rawTxs));
-  })
+  }(rawTxs));
 
 });
 
