@@ -1,11 +1,9 @@
 
-// mainnet config:
-const config = {
-  pushTimeout: 100
-};
 const WEI_AMOUNT = 14e18;
+const WEI_AMOUNT_FACTOR = 1e18;
 const GAS_LIMIT = 1e5;
-const GAS_PRICE = 1e9;
+const GAS_PRICE = 20e9;
+const FORCE_NONCE = 0;
 
 require('dotenv').config();
 const cliSelect = require('cli-select');
@@ -29,10 +27,15 @@ const CMD_PUSH_TXS = 'Push TXs';
 const CMDS = [CMD_PARSE_ADDRESSES, CMD_PARSE_AMOUNTS, CMD_GENERATE_TXS, CMD_PUSH_TXS];
 const commands = {};
 
-console.log('Choose command:');
-cliSelect({ values: CMDS, defaultValue: 1 }).then(({ value }) => commands[value]());
+const mainLoop = () => {
+  console.log('Choose command:');
+  cliSelect({ values: CMDS, defaultValue: 1 }).then(({ value }) => {
+    commands[value]().then(mainLoop);
+  });
+};
+mainLoop();
 
-commands[CMD_PARSE_ADDRESSES] = () => {
+commands[CMD_PARSE_ADDRESSES] = async () => {
   console.log('Reading addresses file');
   const data = fs.readFileSync(INPUT_FILE);
   const unique = arr => [...new Set(arr.map(addr => addr.toLowerCase()))];
@@ -53,11 +56,12 @@ commands[CMD_GENERATE_TXS] = async () => {
   const Tx = require('ethereumjs-tx');
   const web3 = new Web3(Web3.givenProvider || HTTP_PROVIDER);
 
-  const nonce = await web3.eth.getTransactionCount(SOURCE_ADDRESS);
+  let nonce = FORCE_NONCE;
+  // const nonce = await web3.eth.getTransactionCount(SOURCE_ADDRESS);
   const contract = new web3.eth.Contract(ABI, TOKEN_ADDRESS);
 
   const rawTxs = destAddrs.map((record, i) => {
-    const amount = record.amount ? record.amount : WEI_AMOUNT;
+    const amount = record.amount ? record.amount * WEI_AMOUNT_FACTOR : WEI_AMOUNT;
     const destAddress = record.address.toString().toLowerCase();
     const transfer = contract.methods.transfer(destAddress, Web3.utils.toHex(amount));
     
@@ -80,7 +84,7 @@ commands[CMD_GENERATE_TXS] = async () => {
   console.log(`Transfer transactions created: ${OUTPUT_FILE_TXS}`);
 };
 
-commands[CMD_PARSE_AMOUNTS] = () => {
+commands[CMD_PARSE_AMOUNTS] = async () => {
   const data = fs.readFileSync(INPUT_FILE);
   const lines = (data+'').split(/\n/g);
   const records = lines.map(line => {
@@ -106,9 +110,35 @@ commands[CMD_PARSE_AMOUNTS] = () => {
   console.log(`Total records: ${records.length}`);
   console.log(`Total amount: ${totalAmount}`);
   console.log(`Total merged records: ${mergedRecords.length}`);
-  // console.log(`Duplicates:`, dups);
+  console.log(`Duplicates:`, dups);
 
   fs.mkdirSync(OUTPUT_DIR, { recursive: true });
   fs.writeFileSync(OUTPUT_FILE, JSON.stringify(records, null, '  '));
   console.log(`Saved to file: ${OUTPUT_FILE}`);
+};
+
+commands[CMD_PUSH_TXS] = async () => {
+  const { promisify } = require('es6-promisify');
+  const Web3 = require('web3');
+  const web3 = new Web3(Web3.givenProvider || HTTP_PROVIDER);
+
+  const nonce = await web3.eth.getTransactionCount(SOURCE_ADDRESS);
+  const rawTxs = require(OUTPUT_FILE_TXS).slice(nonce);
+  console.log(`Sliced TXs: slice(${nonce})`);
+
+  while (1) {
+    const rawTx = rawTxs.shift();
+    if (rawTx) {
+      console.log('Pushing tx: ', rawTx);
+      try {
+        await promisify(web3.eth.sendSignedTransaction)(rawTx);
+      } catch (err) {
+        console.error('Error while pushing TX', err);
+        rawTxs.unshift(rawTx);
+      }
+    } else {
+      console.log('Finished pushing all txs');
+      break;
+    }
+  }
 };
