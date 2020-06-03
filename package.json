@@ -19,6 +19,9 @@
   "homepage": "https://github.com/Experty/batch-erc-transfer#readme",
   "devDependencies": {
     "cli-select": "^1.1.2",
-    "ethereumjs-tx": "^1.3.4"
+    "dotenv": "^8.2.0",
+    "ethereumjs-tx": "^1.3.4",
+    "web3": "^1.2.8",
+    "web3-eth": "^1.2.8"
   }
 }
