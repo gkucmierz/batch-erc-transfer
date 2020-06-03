@@ -39,20 +39,6 @@ let HTTP_PROVIDER = `https://${config.network}.infura.io/mrHHBSvjlPmkj54UkkO1`;
 let web3 = new Web3(new Web3.providers.HttpProvider(HTTP_PROVIDER));
 let contract = new web3.eth.Contract(ABI, TOKEN_ADDRESS);
 
-gulp.task('parse-addresses', cb => {
-  fs.readFile('addresses', (err, data) => {
-    if (err) throw err;
-    
-    let uniq = unique((data+'').match(/0x[0-9a-f]{40}/ig)).map(address => ({address}));
-    let addr = JSON.stringify(uniq, null, '  ');
-
-    fs.writeFile('./output/addresses.json', addr + '', err => {
-      if (err) throw err;
-      console.log('addresses parsed (unique): addresses.json');
-      process.nextTick(cb);
-    });
-  });
-});
 
 gulp.task('parse-amounts', cb => {
   fs.readFile('addresses', (err, data) => {
