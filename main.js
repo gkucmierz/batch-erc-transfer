@@ -30,7 +30,7 @@ const CMDS = [CMD_PARSE_ADDRESSES, CMD_PARSE_AMOUNTS, CMD_GENERATE_TXS, CMD_PUSH
 const commands = {};
 
 console.log('Choose command:');
-cliSelect({ values: CMDS, defaultValue: 2 }).then(({ value }) => commands[value]());
+cliSelect({ values: CMDS, defaultValue: 1 }).then(({ value }) => commands[value]());
 
 commands[CMD_PARSE_ADDRESSES] = () => {
   console.log('Reading addresses file');
@@ -80,39 +80,35 @@ commands[CMD_GENERATE_TXS] = async () => {
   console.log(`Transfer transactions created: ${OUTPUT_FILE_TXS}`);
 };
 
-
-
 commands[CMD_PARSE_AMOUNTS] = () => {
-  console.error(`Not implemented`);
-  // fs.readFile('addresses', (err, data) => {
-  //   if (err) throw err;
-    
-  //   let lines = (data+'').split(/\n/g);
+  const data = fs.readFileSync(INPUT_FILE);
+  const lines = (data+'').split(/\n/g);
+  const records = lines.map(line => {
+      const address = line.match(/0x[0-9a-f]{40}/i);
+      const lowerCased = (address && address[0] || '').toLowerCase();
+      const amount = line.match(/[\^|\s][0-9]+([\.\,][0-9]+(\s|$))?/);
+      return {address: lowerCased, amount: amount && parseFloat(amount[0]) || ''};
+    })
+    .filter(record => record.amount && record.address);
 
-  //   let records = lines.map(line => {
-  //       let address = line.match(/0x[0-9a-f]{40}/i);
-  //       let amount = line.match(/[\^|\s][0-9]+([\.\,][0-9]+(\s|$))?/);
-  //       return {address: address && address[0] || '', amount: amount && parseFloat(amount[0]) || ''};
-  //     })
-  //     .filter(record => record.amount && record.address);
+  const totalAmount = records.reduce((a, b) => a + b.amount, 0);
+  const dups = new Set();
+  const map = new Map();
+  records.map(record => {
+    let amount = 0;
+    if (map.has(record.address)) {
+      amount = map.get(record.address);
+      dups.add(record.address);
+    }
+    map.set(record.address, amount + record.amount);
+  });
+  const mergedRecords = [...map].map(([address, amount]) => ({address, amount}));
+  console.log(`Total records: ${records.length}`);
+  console.log(`Total amount: ${totalAmount}`);
+  console.log(`Total merged records: ${mergedRecords.length}`);
+  // console.log(`Duplicates:`, dups);
 
-  //   let addrMap = records.reduce((addrMap, record) => {
-  //     if (addrMap[record.address]) {
-  //       addrMap[record.address] += record.amount;
-  //     } else {
-  //       addrMap[record.address] = record.amount;
-  //     }
-  //     return addrMap;
-  //   }, {});
-
-  //   let reducedRecords = Object.keys(addrMap).map(address => ({address, amount: addrMap[address]}));
-
-  //   let sum = reducedRecords.reduce((acc, record) => acc + record.amount, 0);
-
-  //   fs.writeFile('./output/addresses.json', JSON.stringify(records, null, '  ') + '', err => {
-  //     if (err) throw err;
-  //     console.log(`addresses (${records.length}) with amounts (sanity check: ${sum}) parsed: addresses.json`);
-  //     process.nextTick(cb);
-  //   });
-  // });
+  fs.mkdirSync(OUTPUT_DIR, { recursive: true });
+  fs.writeFileSync(OUTPUT_FILE, JSON.stringify(records, null, '  '));
+  console.log(`Saved to file: ${OUTPUT_FILE}`);
 };
