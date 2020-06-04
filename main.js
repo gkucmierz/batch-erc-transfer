@@ -1,12 +1,13 @@
 
+require('dotenv').config();
+
 const WEI_AMOUNT = 14e18;
 const WEI_AMOUNT_FACTOR = 1e18;
 const GAS_LIMIT = 1e5;
-const GAS_PRICE = 10e9;
+const GAS_PRICE = process.env.GAS_PRICE && +process.env.GAS_PRICE || 1e9;
 const FORCE_NONCE = 0;
 const BATCH_PUSH_TXS = 100;
 
-require('dotenv').config();
 const cliSelect = require('cli-select');
 const fs = require('fs');
 
@@ -50,7 +51,7 @@ commands[CMD_PARSE_ADDRESSES] = async () => {
 };
 
 commands[CMD_GENERATE_TXS] = async () => {
-  console.log('Generating transactions');
+  console.log(`Generating transactions with gas: ${GAS_PRICE}`);
   const destAddrs = require(OUTPUT_FILE);
 
   const Web3 = require('web3');
