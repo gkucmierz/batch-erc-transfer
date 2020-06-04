@@ -2,8 +2,9 @@
 const WEI_AMOUNT = 14e18;
 const WEI_AMOUNT_FACTOR = 1e18;
 const GAS_LIMIT = 1e5;
-const GAS_PRICE = 20e9;
+const GAS_PRICE = 10e9;
 const FORCE_NONCE = 0;
+const BATCH_PUSH_TXS = 100;
 
 require('dotenv').config();
 const cliSelect = require('cli-select');
@@ -122,23 +123,26 @@ commands[CMD_PUSH_TXS] = async () => {
   const Web3 = require('web3');
   const web3 = new Web3(Web3.givenProvider || HTTP_PROVIDER);
 
-  const nonce = await web3.eth.getTransactionCount(SOURCE_ADDRESS);
-  const rawTxs = require(OUTPUT_FILE_TXS).slice(nonce);
-  console.log(`Sliced TXs: slice(${nonce})`);
-
   while (1) {
-    const rawTx = rawTxs.shift();
-    if (rawTx) {
-      console.log('Pushing tx: ', rawTx);
-      try {
-        await promisify(web3.eth.sendSignedTransaction)(rawTx);
-      } catch (err) {
-        console.error('Error while pushing TX', err);
-        rawTxs.unshift(rawTx);
-      }
-    } else {
-      console.log('Finished pushing all txs');
+    const nonce = await web3.eth.getTransactionCount(SOURCE_ADDRESS);
+    const rawTxs = require(OUTPUT_FILE_TXS).slice(nonce).slice(0, BATCH_PUSH_TXS);
+    if (rawTxs.length === 0) {
       break;
+    }
+    while (1) {
+      const rawTx = rawTxs.shift();
+      if (rawTx) {
+        console.log('Pushing tx: ', rawTx);
+        try {
+          await promisify(web3.eth.sendSignedTransaction)(rawTx);
+        } catch (err) {
+          console.error('Error while pushing TX', err);
+          // rawTxs.unshift(rawTx);
+        }
+      } else {
+        console.log('Finished pushing all txs');
+        break;
+      }
     }
   }
 };
