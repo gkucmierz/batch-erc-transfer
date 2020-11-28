@@ -14,6 +14,7 @@
 ```
 HTTP_PROVIDER = wss://mainnet.infura.io/ws/v3/[api-key]
 SOURCE_PRIV = [private-key]
+TOKEN_ADDRESS = 0xDecade1c6Bf2cD9fb89aFad73e4a519C867adcF5
 
 GAS_PRICE = 15e9
 FORCE_NONCE = 0
