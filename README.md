@@ -12,6 +12,9 @@
 
 ### .env file
 ```
-HTTP_PROVIDER=wss://mainnet.infura.io/ws/v3/[api-key]
-SOURCE_PRIV=[private-key]
+HTTP_PROVIDER = wss://mainnet.infura.io/ws/v3/[api-key]
+SOURCE_PRIV = [private-key]
+
+GAS_PRICE = 15e9
+FORCE_NONCE = 0
 ```
