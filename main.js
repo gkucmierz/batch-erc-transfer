@@ -79,7 +79,7 @@ commands[CMD_GENERATE_TXS] = async () => {
     };
 
     const tx = new Tx(txData);
-    // tx.sign(Buffer.from(SOURCE_PRIV, 'hex'));
+    tx.sign(Buffer.from(SOURCE_PRIV, 'hex'));
 
     return '0x' + tx.serialize().toString('hex');
   });
