@@ -65,7 +65,7 @@ commands[CMD_GENERATE_TXS] = async () => {
   const contract = new web3.eth.Contract(ABI, TOKEN_ADDRESS);
 
   const rawTxs = destAddrs.map((record, i) => {
-    const amount = record.amount ? record.amount * WEI_AMOUNT_FACTOR : WEI_AMOUNT;
+    const amount = record.amount;// ? record.amount * WEI_AMOUNT_FACTOR : WEI_AMOUNT;
     const destAddress = record.address.toString().toLowerCase();
     const transfer = contract.methods.transfer(destAddress, Web3.utils.toHex(amount));
 
@@ -79,7 +79,7 @@ commands[CMD_GENERATE_TXS] = async () => {
     };
 
     const tx = new Tx(txData);
-    tx.sign(Buffer.from(SOURCE_PRIV, 'hex'));
+    // tx.sign(Buffer.from(SOURCE_PRIV, 'hex'));
 
     return '0x' + tx.serialize().toString('hex');
   });
@@ -94,12 +94,13 @@ commands[CMD_PARSE_AMOUNTS] = async () => {
   const records = lines.map(line => {
       const address = line.match(/0x[0-9a-f]{40}/i);
       const lowerCased = (address && address[0] || '').toLowerCase();
-      const amount = line.replace(address && address[0] || '', '').match(/[0-9]+/);
-      return {address: lowerCased, amount: amount && parseFloat(amount[0]) || ''};
+      const a = line.replace(address && address[0] || '', '').match(/[0-9]+/);
+      const amount = a && a[0] || '0';
+      return { address: lowerCased, amount };
     })
     .filter(record => record.amount && record.address);
 
-  const totalAmount = records.reduce((a, b) => a + b.amount, 0);
+  const totalAmount = records.reduce((a, b) => a + BigInt(b.amount), 0n);
   const dups = new Set();
   const map = new Map();
   records.map(record => {
